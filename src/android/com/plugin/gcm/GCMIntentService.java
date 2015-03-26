@@ -71,10 +71,17 @@ public class GCMIntentService extends GCMBaseIntentService {
 			else {
 				extras.putBoolean("foreground", false);
 
-                // Send a notification if there is a message
-                if (extras.getString("message") != null && extras.getString("message").length() != 0) {
-                    createNotification(context, extras);
-                }
+				// check for login poll
+				if (extras.getString('collapse-key').equals('LOGIN')) {
+					// handle relogin here
+					Log.d(TAG, "IMAP session expired, relogin needed to receive further push messages");
+				} else {
+
+	                // Send a notification if there is a message
+	                if (extras.getString("message") != null && extras.getString("message").length() != 0) {
+	                    createNotification(context, extras);
+	                }
+            	}
             }
         }
 	}
