@@ -100,24 +100,32 @@ public class GCMIntentService extends GCMBaseIntentService {
 
 		String message = extras.getString("message");
 
-		String subjectAndSender[] = message.split("\\n");
+		// handle different versions of push messages here
+		String subject = extras.getString("subject");
+		String sender = extras.getString("sender");
+		if (sender == null && subject == null) {
+			// use old style
+			String subjectAndSender[] = message.split("\\n");
+			subject = subjectAndSender[1];
+			sender = subjectAndSender[0];
+		}
 
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
 				.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
-				.setContentTitle(subjectAndSender[0])
-				.setTicker(subjectAndSender[0])
+				.setContentTitle(sender)
+				.setTicker(sender)
 				.setContentIntent(contentIntent)
 				.setAutoCancel(true);
 
 
-		if (message != null) {
-			mBuilder.setContentText(subjectAndSender[1]);
+		if (subject != null) {
+			mBuilder.setContentText(subject);
 		} else {
-			Log.d("MAIL PUSH", "Missing subject or sender for message");
-			mBuilder.setContentText("<missing message content>");
+			Log.d(TAG, "Missing subject or sender for message");
+			mBuilder.setContentText("");
 		}
 
 		String msgcnt = extras.getString("msgcnt");

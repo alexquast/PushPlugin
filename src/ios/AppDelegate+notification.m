@@ -109,18 +109,18 @@ NSURLSession *session;
         NSLog(@"%@",[userInfo objectForKey:key]);
     }
     // server address, needs to be stored by wizard in main app
-    NSString *address = @"http://dovetest.oxoe.int/appsuite/api/login/httpAuth";
+    //NSString *address = @"http://dovetest.oxoe.int/appsuite/api/login/httpAuth";
     // create valid url and POST request and request body
-    NSURL *url = [NSURL URLWithString:address];
+    //NSURL *url = [NSURL URLWithString:address];
 
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    //NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     //[request setHTTPMethod:@"POST"];
 
     // create basic auth params
-    NSString *authStr = @"user2@dovetest.oxoe.int:secret";
-    NSData *authData = [authStr dataUsingEncoding:NSUTF8StringEncoding];
-    NSString *authValue = [NSString stringWithFormat: @"Basic %@",[authData base64EncodedStringWithOptions:0]];
-    [request setValue:authValue forHTTPHeaderField:@"Authorization"];
+    //NSString *authStr = @"user2@dovetest.oxoe.int:secret";
+    //NSData *authData = [authStr dataUsingEncoding:NSUTF8StringEncoding];
+    //NSString *authValue = [NSString stringWithFormat: @"Basic %@",[authData base64EncodedStringWithOptions:0]];
+    //[request setValue:authValue forHTTPHeaderField:@"Authorization"];
 
     // Get application state for iOS4.x+ devices, otherwise assume active
 
@@ -139,17 +139,17 @@ NSURLSession *session;
         // call when work is done
         handler(UIBackgroundFetchResultNewData);
 
-    } else if(appState == UIApplicationStateBackground) {
+    } else if(false && appState == UIApplicationStateBackground) {
         if ([userInfo valueForKeyPath:@"aps.content-available"]) {
 
             NSLog(@"Background relogin needed");
 
-            NSURLSessionDownloadTask *downloadTask = [session downloadTaskWithRequest:request];
+          /*  NSURLSessionDownloadTask *downloadTask = [session downloadTaskWithRequest:request];
             //NSURLSessionUploadTask *uTask = [session uploadTaskWithRequest:request fromFile:fileURL];
 
             NSLog(@"Starting relogin via basic auth");
 
-            [downloadTask resume];
+            [downloadTask resume];*/
         }
     } else {
         NSLog(@"Background but not relogin");
