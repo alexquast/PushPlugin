@@ -1,19 +1,29 @@
 package com.plugin.gcm;
 
 import android.app.NotificationManager;
+import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import com.google.android.gcm.GCMRegistrar;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.gcm.GoogleCloudMessaging;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import com.google.android.gms.common.ConnectionResult;
+import java.io.IOException;
+import android.os.AsyncTask;
 
 import java.util.Iterator;
+
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.PackageManager;
 
 /**
  * @author awysocki
@@ -24,13 +34,18 @@ public class PushPlugin extends CordovaPlugin {
 
 	public static final String REGISTER = "register";
 	public static final String UNREGISTER = "unregister";
+	public static final String PROPERTY_REG_ID = "registration_id";
+	public static final String PROPERTY_APPVERSION = "app_version";
+	public static final String EXTRA_MESSAGE = "message";
 	public static final String EXIT = "exit";
+	private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
 	private static CordovaWebView gWebView;
 	private static String gECB;
 	private static String gSenderID;
 	private static Bundle gCachedExtras = null;
-    private static boolean gForeground = false;
+	private static boolean gForeground = false;
+
 
 	/**
 	 * Gets the application context from cordova's main activity.
@@ -39,6 +54,13 @@ public class PushPlugin extends CordovaPlugin {
 	private Context getApplicationContext() {
 		return this.cordova.getActivity().getApplicationContext();
 	}
+	private Activity getApplicationActivity() {
+		return this.cordova.getActivity();
+	}
+
+	GoogleCloudMessaging gcm;
+	String regid;
+	Context context;
 
 	@Override
 	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) {
@@ -62,9 +84,15 @@ public class PushPlugin extends CordovaPlugin {
 
 				Log.v(TAG, "execute: ECB=" + gECB + " senderID=" + gSenderID);
 
-				GCMRegistrar.register(getApplicationContext(), gSenderID);
+				context = getApplicationContext();
+
+				GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
+				regid = getRegistrationId(context);
+
+				if (regid.isEmpty()) {
+					new AsyncRegister().execute(callbackContext);
+				}
 				result = true;
-				callbackContext.success();
 			} catch (JSONException e) {
 				Log.e(TAG, "execute: Got JSON Exception " + e.getMessage());
 				result = false;
@@ -79,7 +107,12 @@ public class PushPlugin extends CordovaPlugin {
 
 		} else if (UNREGISTER.equals(action)) {
 
-			GCMRegistrar.unregister(getApplicationContext());
+			GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
+			try {
+				gcm.unregister();
+			} catch (IOException exception) {
+				Log.d(TAG, "IOException!");
+			}
 
 			Log.v(TAG, "UNREGISTER");
 			result = true;
@@ -92,6 +125,87 @@ public class PushPlugin extends CordovaPlugin {
 
 		return result;
 	}
+	/**
+	 * Gets the current registration ID for application on GCM service.
+	 * <p>
+	 * If result is empty, the app needs to register.
+	 *
+	 * @return registration ID, or empty string if there is no existing
+	 *         registration ID.
+	 */
+	private String getRegistrationId(Context context) {
+		final SharedPreferences prefs = getGCMPreferences(context);
+		String registrationId = prefs.getString(PROPERTY_REG_ID, "");
+		if (registrationId.isEmpty()) {
+			Log.i(TAG, "Registration not found");
+			return "";
+		}
+		// Check if the app was updated; if so, it must clear the registration ID
+		// since the existing regID is not guaranteed to work with the new
+		// app version
+		String registeredVersion = prefs.getString(PROPERTY_APPVERSION, "");
+		String currentVersion = getVersion();
+		if (registeredVersion.equals(currentVersion)) {
+			Log.i(TAG, "Got registrationId from cache");
+			return registrationId;
+		}
+		return "";
+	}
+
+	/**
+	 * @return Application's {@code SharedPreferences}.
+	 */
+	// private SharedPreferences getGCMPreferences(Context context) {
+	// 	// This sample app persists the registration ID in shared preferences, but
+	// 	// how you store the regID in your app is up to you.
+	// 	return getSharedPreferences(PushHandlerActivity.class.getSimpleName(),
+	// 			Context.MODE_PRIVATE);
+	// }
+
+	private class AsyncRegister extends AsyncTask<CallbackContext, Void, Void> {
+		@Override
+		protected Void doInBackground(CallbackContext... callbackContext) {
+			try {
+				if (gcm == null) {
+					gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
+				}
+				regid = gcm.register(gSenderID);
+				Log.v(TAG, "Device registered, registration ID="+regid);
+				storeRegistrationId(getApplicationContext(), regid);
+				callbackContext[0].success(regid);
+			} catch (IOException ex) {
+				Log.d(TAG, "Got IOException on registerInBackground", ex);
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * @return Application's {@code SharedPreferences}.
+	 */
+	private SharedPreferences getGCMPreferences(Context context) {
+		// This sample app persists the registration ID in shared preferences, but
+		// how you store the regID in your app is up to you.
+		Log.d(TAG, "Activity: " + getApplicationActivity().toString());
+		return context.getSharedPreferences(getApplicationActivity().toString(), Context.MODE_PRIVATE);
+	}
+
+	/**
+	 * Stores the registration ID and app versionCode in the application's
+	 * {@code SharedPreferences}.
+	 *
+	 * @param context application's context.
+	 * @param regId registration ID
+	 */
+	private void storeRegistrationId(Context context, String regId) {
+		final SharedPreferences prefs = getGCMPreferences(context);
+		String appVersion = getVersion();
+		Log.i(TAG, "Saving registrationId on version " + appVersion);
+		SharedPreferences.Editor editor = prefs.edit();
+		editor.putString(PROPERTY_REG_ID, regId);
+		editor.putString(PROPERTY_APPVERSION, appVersion);
+		editor.commit();
+	}
 
 	/*
 	 * Sends a json object to the client as parameter to a method which is defined in gECB.
@@ -102,6 +216,16 @@ public class PushPlugin extends CordovaPlugin {
 
 		if (gECB != null && gWebView != null) {
 			gWebView.sendJavascript(_d);
+		}
+	}
+
+	public String getVersion() {
+		try {
+			PackageManager packageManager = getApplicationActivity().getPackageManager();
+			return packageManager.getPackageInfo(getApplicationActivity().getPackageName(), 0).versionName.toString();
+		} catch (NameNotFoundException exception) {
+			Log.d(TAG, "NameNotFoundException!");
+			return "";
 		}
 	}
 
@@ -121,39 +245,54 @@ public class PushPlugin extends CordovaPlugin {
 		}
 	}
 
-    @Override
-    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-        super.initialize(cordova, webView);
-        gForeground = true;
-    }
+	@Override
+	public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+		super.initialize(cordova, webView);
+		gForeground = true;
+		checkPlayServices();
+	}
 
 	@Override
-    public void onPause(boolean multitasking) {
-        super.onPause(multitasking);
-        gForeground = false;
-        final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancelAll();
-    }
+	public void onPause(boolean multitasking) {
+		super.onPause(multitasking);
+		gForeground = false;
+		final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancelAll();
+	}
 
-    @Override
-    public void onResume(boolean multitasking) {
-        super.onResume(multitasking);
-        gForeground = true;
-    }
+	@Override
+	public void onResume(boolean multitasking) {
+		super.onResume(multitasking);
+		gForeground = true;
+		checkPlayServices();
+	}
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        gForeground = false;
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		gForeground = false;
 		gECB = null;
 		gWebView = null;
-    }
+	}
 
-    /*
-     * serializes a bundle to JSON.
-     */
-    private static JSONObject convertBundleToJson(Bundle extras)
-    {
+	private boolean checkPlayServices() {
+		int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(getApplicationContext());
+		if (resultCode != ConnectionResult.SUCCESS) {
+			if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+				GooglePlayServicesUtil.getErrorDialog(resultCode, this.cordova.getActivity(), PLAY_SERVICES_RESOLUTION_REQUEST).show();
+			} else {
+				Log.i(TAG, "This device does not support Play Services.");
+				// finish();
+			}
+			return false;
+		}
+		return true;
+	}
+	/*
+	 * serializes a bundle to JSON.
+	 */
+	private static JSONObject convertBundleToJson(Bundle extras)
+	{
 		try
 		{
 			JSONObject json;
@@ -231,15 +370,15 @@ public class PushPlugin extends CordovaPlugin {
 			Log.e(TAG, "extrasToJSON: JSON exception");
 		}
 		return null;
-    }
+	}
 
-    public static boolean isInForeground()
-    {
-      return gForeground;
-    }
+	public static boolean isInForeground()
+	{
+	  return gForeground;
+	}
 
-    public static boolean isActive()
-    {
-    	return gWebView != null;
-    }
+	public static boolean isActive()
+	{
+		return gWebView != null;
+	}
 }
