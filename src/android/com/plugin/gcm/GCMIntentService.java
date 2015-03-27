@@ -2,7 +2,7 @@ package com.plugin.gcm;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import java.util.Random;
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -63,6 +63,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 		Bundle extras = intent.getExtras();
 		if (extras != null)
 		{
+			Log.d(TAG, "got extras from push");
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
             if (PushPlugin.isInForeground()) {
 				extras.putBoolean("foreground", true);
@@ -71,23 +72,17 @@ public class GCMIntentService extends GCMBaseIntentService {
 			else {
 				extras.putBoolean("foreground", false);
 
-				// check for login poll
-				if (extras.getString('collapse-key').equals('LOGIN')) {
-					// handle relogin here
-					Log.d(TAG, "IMAP session expired, relogin needed to receive further push messages");
-				} else {
-
-	                // Send a notification if there is a message
-	                if (extras.getString("message") != null && extras.getString("message").length() != 0) {
-	                    createNotification(context, extras);
-	                }
-            	}
+                // Send a notification if there is a message
+                //if (extras.getString("message") != null && extras.getString("message").length() != 0) {
+                createNotification(context, extras);
+                //}
             }
         }
 	}
 
-	public void createNotification(Context context, Bundle extras)
-	{
+
+
+	public void createNotification(Context context, Bundle extras) {
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		String appName = getAppName(this);
 
@@ -104,6 +99,8 @@ public class GCMIntentService extends GCMBaseIntentService {
 				defaults = Integer.parseInt(extras.getString("defaults"));
 			} catch (NumberFormatException e) {}
 		}
+
+		Log.d(TAG, "Got a message");
 
 		String message = extras.getString("message");
 
@@ -134,11 +131,8 @@ public class GCMIntentService extends GCMBaseIntentService {
 			Log.d(TAG, "Missing subject or sender for message");
 			mBuilder.setContentText("");
 		}
+/*
 
-		String msgcnt = extras.getString("msgcnt");
-		if (msgcnt != null) {
-			mBuilder.setNumber(Integer.parseInt(msgcnt));
-		}
 
 		int notId = 0;
 
@@ -151,8 +145,11 @@ public class GCMIntentService extends GCMBaseIntentService {
 		catch(Exception e) {
 			Log.e(TAG, "Number format exception - Error parsing Notification ID" + e.getMessage());
 		}
+*/
+		// every message should show up in a single notification, therefore we need random ids
+		Random rand = new Random();
 
-		mNotificationManager.notify((String) appName, notId, mBuilder.build());
+		mNotificationManager.notify(rand.nextInt(), mBuilder.build());
 	}
 
 	private static String getAppName(Context context)
