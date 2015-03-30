@@ -114,10 +114,15 @@ public class GCMIntentService extends GCMBaseIntentService {
 			sender = subjectAndSender[0];
 		}
 
+		// small Icon is the small one placed on bottom rigth on the large one
+		// Large Icon could be the contact image, small icon the app icon
+		// ATM the large icon is the app icon, small icon is not needed
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
-				.setSmallIcon(context.getApplicationInfo().icon)
+				.setSmallIcon(R.drawable.ic_action_email)
+				.setLargeIcon(BitmapFactory.decodeResource(res, R.drawable.icon))
+				//.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
 				.setContentTitle(sender)
 				.setTicker(sender)
