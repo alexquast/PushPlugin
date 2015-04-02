@@ -71,11 +71,8 @@ public class GCMIntentService extends GCMBaseIntentService {
 			}
 			else {
 				extras.putBoolean("foreground", false);
-
-                // Send a notification if there is a message
-                //if (extras.getString("message") != null && extras.getString("message").length() != 0) {
-                createNotification(context, extras);
-                //}
+               	// standard case, a new mail arrives. Build notification and show it
+               	createNotification(context, extras);
             }
         }
 	}
