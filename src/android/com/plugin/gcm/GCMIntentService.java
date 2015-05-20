@@ -165,8 +165,8 @@ public class GCMIntentService extends GCMBaseIntentService {
 
 		messageCount++;
 		if (messageCount > 1) {
-			mBuilder.setContentTitle("New Messages");
-			String content = new Formatter().format("Got %d new messages", messageCount).toString();
+			mBuilder.setContentTitle(getResources().getText(R.string.new_messages));
+			String content = new Formatter().format(getResources().getString(R.string.got_number_new_messages), messageCount).toString();
 			mBuilder.setContentText(content);
 			Log.d(TAG, "Switch to unspecific notification: " + content);
 		} else {
