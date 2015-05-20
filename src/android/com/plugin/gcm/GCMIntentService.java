@@ -23,6 +23,7 @@ import com.openexchange.mobile.mailapp.enterprise.R;
 public class GCMIntentService extends GCMBaseIntentService {
 
 	private static final String TAG = "GCMIntentService";
+	private static int notificationId = 0;
 
 	public GCMIntentService() {
 		super("GCMIntentService");
@@ -70,10 +71,15 @@ public class GCMIntentService extends GCMBaseIntentService {
 			Log.d(TAG, "got extras from push");
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
             if (PushPlugin.isInForeground()) {
+				notificationId = 0;
 				extras.putBoolean("foreground", true);
                 PushPlugin.sendExtras(extras);
 			}
 			else {
+				if (notificationId == 0) {
+					Random rand = new Random();
+					notificationId = rand.nextInt();
+				}
 				extras.putBoolean("foreground", false);
                	// standard case, a new mail arrives. Build notification and show it
                	createNotification(context, extras);
@@ -152,25 +158,10 @@ public class GCMIntentService extends GCMBaseIntentService {
 			Log.d(TAG, "Missing subject or sender for message");
 			mBuilder.setContentText("");
 		}
-/*
 
-
-		int notId = 0;
-
-		try {
-			notId = Integer.parseInt(extras.getString("notId"));
+		if (notificationId != 0) {
+			mNotificationManager.notify(notificationId, mBuilder.build());
 		}
-		catch(NumberFormatException e) {
-			Log.e(TAG, "Number format exception - Error parsing Notification ID: " + e.getMessage());
-		}
-		catch(Exception e) {
-			Log.e(TAG, "Number format exception - Error parsing Notification ID" + e.getMessage());
-		}
-*/
-		// every message should show up in a single notification, therefore we need random ids
-		Random rand = new Random();
-
-		mNotificationManager.notify(rand.nextInt(), mBuilder.build());
 	}
 
 	private static String getAppName(Context context)
