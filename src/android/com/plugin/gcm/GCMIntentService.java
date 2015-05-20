@@ -15,7 +15,6 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-import java.util.Formatter;
 
 import com.google.android.gcm.GCMBaseIntentService;
 import com.openexchange.mobile.mailapp.enterprise.R;
@@ -166,7 +165,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 		messageCount++;
 		if (messageCount > 1) {
 			mBuilder.setContentTitle(getResources().getText(R.string.new_messages));
-			String content = new Formatter().format(getResources().getString(R.string.got_number_new_messages), messageCount).toString();
+			String content = getResources().getQuantityString(R.plurals.got_number_new_messages, messageCount, messageCount);
 			mBuilder.setContentText(content);
 			Log.d(TAG, "Switch to unspecific notification: " + content);
 		} else {
