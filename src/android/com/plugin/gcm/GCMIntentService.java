@@ -2,18 +2,22 @@ package com.plugin.gcm;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.Random;
+
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.google.android.gcm.GCMBaseIntentService;
+import com.openexchange.mobile.mailapp.enterprise.R;
 
 @SuppressLint("NewApi")
 public class GCMIntentService extends GCMBaseIntentService {
@@ -82,7 +86,6 @@ public class GCMIntentService extends GCMBaseIntentService {
 	public void createNotification(Context context, Bundle extras) {
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		String appName = getAppName(this);
-
 		Intent notificationIntent = new Intent(this, PushHandlerActivity.class);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		notificationIntent.putExtra("pushBundle", extras);
@@ -105,20 +108,36 @@ public class GCMIntentService extends GCMBaseIntentService {
 		String subject = extras.getString("subject");
 		String sender = extras.getString("sender");
 		if (sender == null && subject == null) {
-			// use old style
+			
+			// check if refresh event
+			String sync_event = extras.getString("SYNC_EVENT");
+			
+			if (sync_event != null && sync_event.equals("MAIL")) {
+				Log.d(TAG, "Got refresh event for mail in background, doing nothing");
+				return;
+			}
+			
+			Boolean isRefresh = message.equals("You've received a new login");
+			if (isRefresh) {
+				Log.d(TAG, "Got a relogin message, this should not happen as it is deprecated.");
+				return;
+			}
+			
+			// use old style message format, just for backwards compatibility
 			String subjectAndSender[] = message.split("\\n");
 			subject = subjectAndSender[1];
 			sender = subjectAndSender[0];
 		}
 
-		// small Icon is the small one placed on bottom rigth on the large one
+
+		// small Icon is the small one placed on bottom right on the large one
 		// Large Icon could be the contact image, small icon the app icon
 		// ATM the large icon is the app icon, small icon is not needed
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
 				.setSmallIcon(R.drawable.ic_action_email)
-				.setLargeIcon(BitmapFactory.decodeResource(res, R.drawable.icon))
+				.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.icon))
 				//.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
 				.setContentTitle(sender)
