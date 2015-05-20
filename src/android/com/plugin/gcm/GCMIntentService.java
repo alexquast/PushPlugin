@@ -2,23 +2,29 @@ package com.plugin.gcm;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.Random;
+
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.google.android.gcm.GCMBaseIntentService;
+import com.openexchange.mobile.mailapp.enterprise.R;
 
 @SuppressLint("NewApi")
 public class GCMIntentService extends GCMBaseIntentService {
 
 	private static final String TAG = "GCMIntentService";
+	private static int notificationId = 0;
+	private static short messageCount = 0;
 
 	public GCMIntentService() {
 		super("GCMIntentService");
@@ -66,10 +72,21 @@ public class GCMIntentService extends GCMBaseIntentService {
 			Log.d(TAG, "got extras from push");
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
             if (PushPlugin.isInForeground()) {
+				notificationId = 0;
+				messageCount = 0;
 				extras.putBoolean("foreground", true);
                 PushPlugin.sendExtras(extras);
 			}
 			else {
+				if (notificationId == 0) {
+					//need a new random notification ID, to update the current notification
+					Random rand = new Random();
+					notificationId = rand.nextInt();
+				}
+				if (messageCount > 0) {
+					//remove cid from extras, so App opens in default folder
+					extras.remove("cid");
+				}
 				extras.putBoolean("foreground", false);
                	// standard case, a new mail arrives. Build notification and show it
                	createNotification(context, extras);
@@ -82,7 +99,6 @@ public class GCMIntentService extends GCMBaseIntentService {
 	public void createNotification(Context context, Bundle extras) {
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		String appName = getAppName(this);
-
 		Intent notificationIntent = new Intent(this, PushHandlerActivity.class);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		notificationIntent.putExtra("pushBundle", extras);
@@ -105,53 +121,62 @@ public class GCMIntentService extends GCMBaseIntentService {
 		String subject = extras.getString("subject");
 		String sender = extras.getString("sender");
 		if (sender == null && subject == null) {
-			// use old style
+			
+			// check if refresh event
+			String sync_event = extras.getString("SYNC_EVENT");
+			
+			if (sync_event != null && sync_event.equals("MAIL")) {
+				Log.d(TAG, "Got refresh event for mail in background, doing nothing");
+				return;
+			}
+			
+			Boolean isRefresh = message.equals("You've received a new login");
+			if (isRefresh) {
+				Log.d(TAG, "Got a relogin message, this should not happen as it is deprecated.");
+				return;
+			}
+			
+			// use old style message format, just for backwards compatibility
 			String subjectAndSender[] = message.split("\\n");
 			subject = subjectAndSender[1];
 			sender = subjectAndSender[0];
 		}
 
-		// small Icon is the small one placed on bottom rigth on the large one
+
+		// small Icon is the small one placed on bottom right on the large one
 		// Large Icon could be the contact image, small icon the app icon
 		// ATM the large icon is the app icon, small icon is not needed
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
 				.setSmallIcon(R.drawable.ic_action_email)
-				.setLargeIcon(BitmapFactory.decodeResource(res, R.drawable.icon))
+				.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.icon))
 				//.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
-				.setContentTitle(sender)
 				.setTicker(sender)
 				.setContentIntent(contentIntent)
 				.setAutoCancel(true);
 
-
-		if (subject != null) {
-			mBuilder.setContentText(subject);
-		} else {
+		if (subject == null) {
+			subject = "";
 			Log.d(TAG, "Missing subject or sender for message");
-			mBuilder.setContentText("");
 		}
-/*
 
-
-		int notId = 0;
-
-		try {
-			notId = Integer.parseInt(extras.getString("notId"));
+		messageCount++;
+		if (messageCount > 1) {
+			mBuilder.setContentTitle(getResources().getText(R.string.new_messages));
+			String content = getResources().getQuantityString(R.plurals.got_number_new_messages, messageCount, messageCount);
+			mBuilder.setContentText(content);
+			Log.d(TAG, "Switch to unspecific notification: " + content);
+		} else {
+			mBuilder
+				.setContentTitle(sender)
+				.setContentText(subject);
 		}
-		catch(NumberFormatException e) {
-			Log.e(TAG, "Number format exception - Error parsing Notification ID: " + e.getMessage());
-		}
-		catch(Exception e) {
-			Log.e(TAG, "Number format exception - Error parsing Notification ID" + e.getMessage());
-		}
-*/
-		// every message should show up in a single notification, therefore we need random ids
-		Random rand = new Random();
 
-		mNotificationManager.notify(rand.nextInt(), mBuilder.build());
+		if (notificationId != 0) {
+			mNotificationManager.notify(notificationId, mBuilder.build());
+		}
 	}
 
 	private static String getAppName(Context context)
