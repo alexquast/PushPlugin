@@ -15,6 +15,7 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import java.util.Formatter;
 
 import com.google.android.gcm.GCMBaseIntentService;
 import com.openexchange.mobile.mailapp.enterprise.R;
@@ -24,6 +25,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 
 	private static final String TAG = "GCMIntentService";
 	private static int notificationId = 0;
+	private static short messageCount = 0;
 
 	public GCMIntentService() {
 		super("GCMIntentService");
@@ -72,6 +74,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
             if (PushPlugin.isInForeground()) {
 				notificationId = 0;
+				messageCount = 0;
 				extras.putBoolean("foreground", true);
                 PushPlugin.sendExtras(extras);
 			}
@@ -146,17 +149,25 @@ public class GCMIntentService extends GCMBaseIntentService {
 				.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.icon))
 				//.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
-				.setContentTitle(sender)
 				.setTicker(sender)
 				.setContentIntent(contentIntent)
 				.setAutoCancel(true);
 
-
-		if (subject != null) {
-			mBuilder.setContentText(subject);
-		} else {
+		if (subject == null) {
+			subject = "";
 			Log.d(TAG, "Missing subject or sender for message");
-			mBuilder.setContentText("");
+		}
+
+		messageCount++;
+		if (messageCount > 1) {
+			mBuilder.setContentTitle("New Messages");
+			String content = new Formatter().format("Got %d new messages", messageCount).toString();
+			mBuilder.setContentText(content);
+			Log.d(TAG, "Switch to unspecific notification: " + content);
+		} else {
+			mBuilder
+				.setContentTitle(sender)
+				.setContentText(subject);
 		}
 
 		if (notificationId != 0) {
