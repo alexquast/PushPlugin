@@ -80,8 +80,13 @@ public class GCMIntentService extends GCMBaseIntentService {
 			}
 			else {
 				if (notificationId == 0) {
+					//need a new random notification ID, to update the current notification
 					Random rand = new Random();
 					notificationId = rand.nextInt();
+				}
+				if (messageCount > 0) {
+					//remove cid from extras, so App opens in default folder
+					extras.remove("cid");
 				}
 				extras.putBoolean("foreground", false);
                	// standard case, a new mail arrives. Build notification and show it
