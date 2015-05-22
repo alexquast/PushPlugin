@@ -125,6 +125,8 @@ public class PushPlugin extends CordovaPlugin {
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         gForeground = true;
+
+		GCMIntentService.resetNewMessageCounter();
     }
 
 	@Override
@@ -139,6 +141,8 @@ public class PushPlugin extends CordovaPlugin {
     public void onResume(boolean multitasking) {
         super.onResume(multitasking);
         gForeground = true;
+
+		GCMIntentService.resetNewMessageCounter();
     }
 
     @Override
