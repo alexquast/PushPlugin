@@ -72,8 +72,6 @@ public class GCMIntentService extends GCMBaseIntentService {
 			Log.d(TAG, "got extras from push");
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
             if (PushPlugin.isInForeground()) {
-				notificationId = 0;
-				messageCount = 0;
 				extras.putBoolean("foreground", true);
                 PushPlugin.sendExtras(extras);
 			}
@@ -194,4 +192,8 @@ public class GCMIntentService extends GCMBaseIntentService {
 		Log.e(TAG, "onError - errorId: " + errorId);
 	}
 
+	public static void resetNewMessageCounter() {
+		notificationId = 0;
+		messageCount = 0;
+	}
 }
