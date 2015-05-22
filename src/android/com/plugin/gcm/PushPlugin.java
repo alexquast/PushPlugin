@@ -127,6 +127,8 @@ public class PushPlugin extends CordovaPlugin {
         gForeground = true;
 
 		GCMIntentService.resetNewMessageCounter();
+		final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancelAll();
     }
 
 	@Override
@@ -143,6 +145,8 @@ public class PushPlugin extends CordovaPlugin {
         gForeground = true;
 
 		GCMIntentService.resetNewMessageCounter();
+		final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancelAll();
     }
 
     @Override
