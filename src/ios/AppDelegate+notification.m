@@ -98,70 +98,6 @@ NSURLSession *session;
 }
 
 
-
-- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))handler
-{
-    // store the completition handler to be called from the delegate
-    _backgroundCompletionHandler = handler;
-
-    NSLog(@"didReceiveNotification");
-    for(NSString *key in [userInfo allKeys]) {
-        NSLog(@"%@",[userInfo objectForKey:key]);
-    }
-    // server address, needs to be stored by wizard in main app
-    //NSString *address = @"http://dovetest.oxoe.int/appsuite/api/login/httpAuth";
-    // create valid url and POST request and request body
-    //NSURL *url = [NSURL URLWithString:address];
-
-    //NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    //[request setHTTPMethod:@"POST"];
-
-    // create basic auth params
-    //NSString *authStr = @"user2@dovetest.oxoe.int:secret";
-    //NSData *authData = [authStr dataUsingEncoding:NSUTF8StringEncoding];
-    //NSString *authValue = [NSString stringWithFormat: @"Basic %@",[authData base64EncodedStringWithOptions:0]];
-    //[request setValue:authValue forHTTPHeaderField:@"Authorization"];
-
-    // Get application state for iOS4.x+ devices, otherwise assume active
-
-    UIApplicationState appState = UIApplicationStateActive;
-
-    if ([application respondsToSelector:@selector(applicationState)]) {
-        appState = application.applicationState;
-    }
-    // app is active/forground, pass push to running app
-    if (appState == UIApplicationStateActive) {
-        PushPlugin *pushHandler = [self getCommandInstance:@"PushPlugin"];
-        pushHandler.notificationMessage = userInfo;
-        pushHandler.isInline = YES;
-        [pushHandler notificationReceived];
-
-        // call when work is done
-        handler(UIBackgroundFetchResultNewData);
-
-    } else if(false && appState == UIApplicationStateBackground) {
-        if ([userInfo valueForKeyPath:@"aps.content-available"]) {
-
-            NSLog(@"Background relogin needed");
-
-          /*  NSURLSessionDownloadTask *downloadTask = [session downloadTaskWithRequest:request];
-            //NSURLSessionUploadTask *uTask = [session uploadTaskWithRequest:request fromFile:fileURL];
-
-            NSLog(@"Starting relogin via basic auth");
-
-            [downloadTask resume];*/
-        }
-    } else {
-        NSLog(@"Background but not relogin");
-        //save it for later
-        self.launchNotification = userInfo;
-        // call when work is done
-        handler(UIBackgroundFetchResultNewData);
-
-    }
-
-}
-/*
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
     NSLog(@"didReceiveNotification");
 
@@ -181,7 +117,7 @@ NSURLSession *session;
         self.launchNotification = userInfo;
     }
 }
-*/
+
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
 
