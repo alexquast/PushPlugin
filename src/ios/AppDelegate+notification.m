@@ -10,12 +10,7 @@
 #import "PushPlugin.h"
 #import <objc/runtime.h>
 
-typedef void(^BackgroundCompletionHandler)(UIBackgroundFetchResult);
-
 static char launchNotificationKey;
-BackgroundCompletionHandler _backgroundCompletionHandler;
-NSURLSessionConfiguration *backgroundConfiguration;
-NSURLSession *session;
 
 @implementation AppDelegate (notification)
 
@@ -67,17 +62,6 @@ NSURLSession *session;
     [pushHandler didFailToRegisterForRemoteNotificationsWithError:error];
 }
 
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
-   NSLog(@"didcompletewith error %@",[error localizedDescription]);
-    _backgroundCompletionHandler(UIBackgroundFetchResultFailed);
-}
-
--(void)URLSessionDidFinishEventsForBackgroundURLSession:(NSURLSession *)session {
-    NSLog(@"URLSessionDidFinishEventsForBackgroundURLSession");
-    _backgroundCompletionHandler(UIBackgroundFetchResultNewData);
-}
-
-
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
     NSLog(@"didReceiveNotification");
 
@@ -102,10 +86,6 @@ NSURLSession *session;
 - (void)applicationDidBecomeActive:(UIApplication *)application {
 
     NSLog(@"active");
-
-    backgroundConfiguration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"com.open-xchange.mailapp"];
-    session = [NSURLSession sessionWithConfiguration:backgroundConfiguration delegate:self delegateQueue:[NSOperationQueue mainQueue]];
-
 
     //zero badge
     application.applicationIconBadgeNumber = 0;
