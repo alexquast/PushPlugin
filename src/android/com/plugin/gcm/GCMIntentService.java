@@ -11,6 +11,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
@@ -23,8 +24,6 @@ import com.openexchange.mobile.mailapp.enterprise.R;
 public class GCMIntentService extends GCMBaseIntentService {
 
 	private static final String TAG = "GCMIntentService";
-	private static int notificationId = 0;
-	private static short messageCount = 0;
 
 	public GCMIntentService() {
 		super("GCMIntentService");
@@ -34,6 +33,21 @@ public class GCMIntentService extends GCMBaseIntentService {
 	public void onRegistered(Context context, String regId) {
 
 		Log.v(TAG, "onRegistered: "+ regId);
+
+		//BEGIN initialize custom notification handling
+
+		//need a new random notification ID, to update the current notification
+		Random rand = new Random();
+		int notificationId = rand.nextInt();
+		SharedPreferences preferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE);
+		SharedPreferences.Editor store = preferences.edit();
+		store
+			.clear()
+			.putInt("id", notificationId)
+			.putInt("messageCount", 0);
+		store.apply();
+
+		//DONE initialize custom notification handling
 
 		JSONObject json;
 
@@ -76,15 +90,6 @@ public class GCMIntentService extends GCMBaseIntentService {
                 PushPlugin.sendExtras(extras);
 			}
 			else {
-				if (notificationId == 0) {
-					//need a new random notification ID, to update the current notification
-					Random rand = new Random();
-					notificationId = rand.nextInt();
-				}
-				if (messageCount > 0) {
-					//remove cid from extras, so App opens in default folder
-					extras.remove("cid");
-				}
 				extras.putBoolean("foreground", false);
                	// standard case, a new mail arrives. Build notification and show it
                	createNotification(context, extras);
@@ -95,10 +100,17 @@ public class GCMIntentService extends GCMBaseIntentService {
 
 
 	public void createNotification(Context context, Bundle extras) {
+		SharedPreferences preferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE);
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		String appName = getAppName(this);
 		Intent notificationIntent = new Intent(this, PushHandlerActivity.class);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+		int messageCount = preferences.getInt("messageCount", 0);
+		if (messageCount > 0) {
+			//remove cid from extras, so App opens in default folder
+			extras.remove("cid");
+		}
 		notificationIntent.putExtra("pushBundle", extras);
 
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -161,6 +173,10 @@ public class GCMIntentService extends GCMBaseIntentService {
 		}
 
 		messageCount++;
+		SharedPreferences.Editor store = preferences.edit();
+		store.putInt("messageCount", messageCount);
+		store.apply();
+
 		if (messageCount > 1) {
 			mBuilder.setContentTitle(getResources().getText(R.string.new_messages));
 			String content = getResources().getQuantityString(R.plurals.got_number_new_messages, messageCount, messageCount);
@@ -172,8 +188,11 @@ public class GCMIntentService extends GCMBaseIntentService {
 				.setContentText(subject);
 		}
 
+		int notificationId = preferences.getInt("id", 0);
 		if (notificationId != 0) {
 			mNotificationManager.notify(notificationId, mBuilder.build());
+		} else {
+			Log.wtf(TAG, "No notification ID found in SharedPreferences");
 		}
 	}
 
@@ -192,8 +211,10 @@ public class GCMIntentService extends GCMBaseIntentService {
 		Log.e(TAG, "onError - errorId: " + errorId);
 	}
 
-	public static void resetNewMessageCounter() {
-		notificationId = 0;
-		messageCount = 0;
+	public static void resetNewMessageCounter(Context context) {
+		SharedPreferences preferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE);
+		SharedPreferences.Editor store = preferences.edit();
+		store.putInt("messageCount", 0);
+		store.apply();
 	}
 }

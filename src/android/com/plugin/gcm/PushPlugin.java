@@ -126,7 +126,7 @@ public class PushPlugin extends CordovaPlugin {
         super.initialize(cordova, webView);
         gForeground = true;
 
-		GCMIntentService.resetNewMessageCounter();
+		GCMIntentService.resetNewMessageCounter(getApplicationContext());
 		final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancelAll();
     }
@@ -144,7 +144,7 @@ public class PushPlugin extends CordovaPlugin {
         super.onResume(multitasking);
         gForeground = true;
 
-		GCMIntentService.resetNewMessageCounter();
+		GCMIntentService.resetNewMessageCounter(getApplicationContext());
 		final NotificationManager notificationManager = (NotificationManager) cordova.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancelAll();
     }
