@@ -164,6 +164,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 				//.setSmallIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
 				.setTicker(sender)
+                .setLights(0xFF0000FF, 1000, 2000) // set blue notification light which pulses
 				.setContentIntent(contentIntent)
 				.setAutoCancel(true);
 
@@ -188,9 +189,13 @@ public class GCMIntentService extends GCMBaseIntentService {
 				.setContentText(subject);
 		}
 
+        Notification notification = mBuilder.build();
+        notification.defaults = 0;
+        notification.flags |= Notification.FLAG_SHOW_LIGHTS;
+        notification.defaults = Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE;
 		int notificationId = preferences.getInt("id", 0);
 		if (notificationId != 0) {
-			mNotificationManager.notify(notificationId, mBuilder.build());
+			mNotificationManager.notify(notificationId, notification);
 		} else {
 			Log.wtf(TAG, "No notification ID found in SharedPreferences");
 		}
