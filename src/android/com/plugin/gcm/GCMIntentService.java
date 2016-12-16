@@ -24,7 +24,7 @@ import com.openexchange.mobile.mailapp.enterprise.R;
 @SuppressLint("NewApi")
 public class GCMIntentService extends GCMBaseIntentService {
 
-    private static final String TAG = "GCMIntentService";
+    private static final String TAG = "OXMailIntentService";
 
     public GCMIntentService() {
         super("GCMIntentService");
@@ -107,7 +107,19 @@ public class GCMIntentService extends GCMBaseIntentService {
         Intent notificationIntent = new Intent(this, PushHandlerActivity.class);
         notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        int messageCount = preferences.getInt("messageCount", 0);
+        Boolean unreadInfoFromServer = false;
+
+        int messageCount = 0;
+
+        // mixed handling for system that send unread count and those who dont send unread count
+        if (extras.containsKey("unread")) {
+            unreadInfoFromServer = true;
+            Log.d(TAG, "Server tells unread count:" + extras.getString("unread"));
+            messageCount = Integer.parseInt(extras.getString("unread", "0"));
+        } else {
+            messageCount = preferences.getInt("messageCount", 0);
+        }
+
         if (messageCount > 0) {
             //remove cid from extras, so App opens in default folder
             extras.remove("cid");
@@ -124,8 +136,6 @@ public class GCMIntentService extends GCMBaseIntentService {
             } catch (NumberFormatException e) {}
         }
 
-        Log.d(TAG, "Got a message");
-
         String message = extras.getString("message");
 
         // handle different versions of push messages here
@@ -138,12 +148,6 @@ public class GCMIntentService extends GCMBaseIntentService {
 
             if (sync_event != null && sync_event.equals("MAIL")) {
                 Log.d(TAG, "Got refresh event for mail in background, doing nothing");
-                return;
-            }
-
-            Boolean isRefresh = message.equals("You've received a new login");
-            if (isRefresh) {
-                Log.d(TAG, "Got a relogin message, this should not happen as it is deprecated.");
                 return;
             }
 
@@ -181,11 +185,12 @@ public class GCMIntentService extends GCMBaseIntentService {
             subject = "";
             Log.d(TAG, "Missing subject or sender for message");
         }
-
-        messageCount++;
-        SharedPreferences.Editor store = preferences.edit();
-        store.putInt("messageCount", messageCount);
-        store.apply();
+        if (!unreadInfoFromServer) {
+            messageCount++;
+            SharedPreferences.Editor store = preferences.edit();
+            store.putInt("messageCount", messageCount);
+            store.apply();
+        }
 
         if (messageCount > 1) {
             mBuilder.setContentTitle(getResources().getText(R.string.new_messages));
@@ -274,4 +279,3 @@ public class GCMIntentService extends GCMBaseIntentService {
         store.apply();
     }
 }
-
